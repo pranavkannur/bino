@@ -1,43 +1,32 @@
-import { useState, type FormEvent } from "react";
+import type { FormEvent } from "react";
 import { Link, Navigate, useLocation } from "react-router";
-import { api } from "../lib/api";
-import { useAuthStore } from "../store/useAuthStore";
+import { useSignin, useSignup } from "@/hooks/useAuth";
+import { useSession } from "@/hooks/useSession";
 
 type AuthFormProps = {
-    mode: "login" | "signup";
+  mode: "login" | "signup";
 };
 
 export default function AuthFrom({ mode }: AuthFormProps) {
-    const isSignup = mode === "signup";
-    const { user, checking, setUser } = useAuthStore();
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const location = useLocation();
+  const isSignup = mode === "signup";
+  const { user, isPending } = useSession();
+  const signup = useSignup();
+  const signin = useSignin();
+  const auth = isSignup ? signup : signin;
+  const location = useLocation();
 
-    const destination = location.state?.from ?? "/profile";
+  const destination = location.state?.from ?? "/profile";
 
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
-        setLoading(true);
-        setError("");
-        const body = Object.fromEntries(new FormData(event.currentTarget));
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    auth.mutate(new FormData(event.currentTarget));
+ }
+  if (isPending) return <p className=" text-zinc-400">Checking Session ...</p>;
 
-        try{
-            const {data} =await api.post(isSignup ? "/auth/signup" : "/auth/signin", body);
-            setUser(data.user);
-        }catch(err){
-            setError( err instanceof Error ? err.message : "Try again");
-        }finally{
-            setLoading(false);
-        }
-    }
+  if (user) return <Navigate to={destination} replace />;
 
-    if (checking) return<p className=" text-zinc-400">Checking Session ...</p>;
-
-    if (user) return <Navigate to ={destination} replace />;
-
-    return(
-        <section className="panel mx-auto max-w-md">
+  return (
+    <section className="panel mx-auto max-w-md">
         <h1 className="page-title">
           {isSignup ? "Create an account" : "Log in"}
         </h1>
@@ -69,9 +58,9 @@ export default function AuthFrom({ mode }: AuthFormProps) {
               required
             />
           </label>
-          {error && <p role="alert" className="error">{error}</p>}
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? "Please wait…" : isSignup ? "Create account" : "Log in"}
+          {auth.isError && <p role="alert" className="error">{auth.error.message}</p>}
+          <button type="submit" className="btn-primary" disabled={auth.isPending}>
+            {auth.isPending ? "Please wait…" : isSignup ? "Create account" : "Log in"}
           </button>
         </form>
         <p className="mt-5 text-sm text-zinc-400">
@@ -82,5 +71,4 @@ export default function AuthFrom({ mode }: AuthFormProps) {
         </p>
       </section>
     );
-    
 }

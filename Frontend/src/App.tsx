@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-import axios from "axios";
 import { BrowserRouter, Route, Routes } from "react-router";
 import PageLayout from "./components/PageLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -8,33 +6,15 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Profile from "./pages/Profile";
 import Stocks from "./pages/Stocks";
-import { api } from "./lib/api";
-import { useAuthStore } from "./store/useAuthStore";
 import "./index.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClinet= new QueryClient();
 
 export function App(){
-  const {setUser, setChecking, setSessionError}= useAuthStore();
-
-  useEffect(()=>{
-    async function checkSession() {
-      try{
-        const { data } = await api.get("/auth/me");
-        setUser(data.user);
-      }catch(err){
-        if(axios.isAxiosError(err) && err.response?.status ===401){
-          setUser(null);
-        }else{
-          setSessionError("Could not check your session. Try again.");
-        }
-      }finally{
-        setChecking(false);
-      }
-      
-    }
-    checkSession();
-  },[setUser,setChecking,setSessionError]);
-
+  
   return(
+    <QueryClientProvider client={queryClinet}>
     <BrowserRouter useTransitions={false}>
     <Routes>
       <Route element={<PageLayout />}>
@@ -60,5 +40,6 @@ export function App(){
       </Route>
     </Routes>
   </BrowserRouter>
+  </QueryClientProvider>
   );
 }
